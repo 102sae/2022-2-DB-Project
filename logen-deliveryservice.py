@@ -10,32 +10,15 @@ except:
 #자신 localhost에 맞게 수정  
 con = mysql.connect(user='root', password='@mysql0056', host='127.0.0.1',port="3307", database='dgu')  
 
-#global variable
-s_name = ''
-s_phone = ''
-s_addr = ''
-s_email = ''
-s_visit = ''
-
-r_name = ''
-r_phone = ''
-r_addr = ''
-
-p_name = ''
-p_quantity = ''
-p_cost = ''
-p_size = ''
-p_weight = ''
-
 def logincheck(e_name, e_phone, e_mail):
     cursor = con.cursor(buffered=True)
     cursor.execute("select count(*) from users where user_name='"+ e_name.get() + "' and user_phone='"+e_phone.get() + "' and user_email='"+e_mail.get()+"'")
     rows = cursor.fetchall()
 
     for row in rows:
-        if(row[0]==1):
+        if(row[0]):
             MessageBox.showinfo("Login Status", "Login Successful")
-            app.switch_frame(Reservation)
+            app.switch_frame(ReservationReceiver)
             print("Logged IN Successfully")
         else:
             MessageBox.showinfo("Login Status", "Login Failed")
@@ -44,34 +27,72 @@ def logincheck(e_name, e_phone, e_mail):
             e_mail.delete(0, 'end')
             
 def senderInfo(sender_name,sender_phonenum,sender_addr,sender_email,sender_visit):
-    s_name = sender_name
-    s_phone = sender_phonenum
-    s_addr = sender_addr
-    s_email = sender_email
-    s_visit = sender_visit
-    app.switch_frame(ReservationReceiver)
+    s_name = sender_name.get()
+    s_phone = sender_phonenum.get()
+    s_addr = sender_addr.get("1.0","end-1c")
+    s_email = sender_email.get()
+    s_visit = sender_visit.get()
+    enrollSender(s_name,s_phone,s_addr,s_email)
+    app.switch_frame(Complete)
+    
 
 def receiverInfo(receiver_name,receiver_phonenum,receiver_addr):
-    r_name = receiver_name
-    r_phone = receiver_phonenum
-    r_addr = receiver_addr
+    r_name = receiver_name.get()
+    r_phone = receiver_phonenum.get()
+    r_addr = receiver_addr.get("1.0","end-1c")
+    enrollReceiver(r_name,r_phone,r_addr)
     app.switch_frame(ReservationProduct)
+    
 
 def productInfo(product_name,product_quantity ,product_cost ,product_size,product_weight):
-    p_name = product_name
-    p_quantity = product_quantity
-    p_cost = product_cost
-    p_size = product_size
-    p_weight = product_weight
-    enrollReserv()
-    app.switch_frame(Complete)
+    p_name = product_name.get()
+    p_quantity = product_quantity.get()
+    p_cost = product_cost.get()
+    p_size = product_size.get()
+    p_weight = product_weight.get()
+    enrollProduct(p_name,p_weight,p_size,p_cost,p_quantity)
+    app.switch_frame(ReservationSender)
 
 #예약 DB로 전송
-def enrollReserv(): 
-    cursor = con.cursor(buffered=True)
-    print('good')
-    #cursor.execute("insert into sender values('"+ e_name.get() + "' and user_phone='"+e_phone.get() + "' and user_email='"+e_mail.get()+"'")
-    #rows = cursor.fetchall()
+def enrollReceiver(r_name,r_phone,r_addr): 
+    cursor = con.cursor(prepared=True)
+    cursor.execute("select count(*) from sender")
+    rows = cursor.fetchall()
+    s_id = rows[0][0] + 1 #다음 sender id
+
+    cursor.execute("select count(*) from receiver")
+    rows = cursor.fetchall()
+    r_id = rows[0][0] + 101 #다음 receiver id
+
+    #insert_val =  (s_id, r_id, p_id, s_name, s_phone, s_addr, s_email)
+    #insert_sql = "INSERT INTO sender (sender_id, receiver_id, product_id, sender_name, sender_phone, sender_address, sender_email) VALUES (%d, %d, %d, %s, %s, %s, %s)" % tuple(insert_val)
+    cursor.execute("INSERT INTO receiver (receiver_id, receiver_name, receiver_phone, receiver_address) VALUES (" + "'"+str(r_id)+"'," + "'"+r_name+"',"+ "'"+r_phone+"'," + "'"+r_addr+"'" +")")
+    con.commit()
+
+def enrollProduct(p_name,p_weight,p_size,p_cost,p_quantity):
+    cursor = con.cursor(prepared=True)
+    cursor.execute("select count(*) from product")
+    rows = cursor.fetchall()
+    p_id = rows[0][0] + 1001 #다음 product id 
+    cursor.execute("INSERT INTO product (product_id, product_name, product_weight, product_size, product_cost, product_quantity) VALUES (" + "'"+str(p_id)+"'," + "'"+p_name+"',"+ "'"+p_weight+"'," + "'"+p_size+"'," + "'"+p_cost+"'," + "'"+p_quantity+"'" +")")
+    con.commit()
+
+def enrollSender(s_name, s_phone, s_addr, s_email):
+    cursor = con.cursor(prepared=True)
+    cursor.execute("select count(*) from product")
+    rows = cursor.fetchall()
+    p_id = rows[0][0] + 1000 #다음 product id 
+
+    cursor.execute("select count(*) from sender")
+    rows = cursor.fetchall()
+    s_id = rows[0][0] + 1 #다음 sender id
+
+    cursor.execute("select count(*) from receiver")
+    rows = cursor.fetchall()
+    r_id = rows[0][0] + 100#다음 receiver id
+   
+    cursor.execute("INSERT INTO sender (sender_id, receiver_id, product_id, sender_name, sender_phone, sender_address, sender_email) VALUES (" + "'"+str(s_id)+"'," + "'"+str(r_id)+"',"+ "'"+str(p_id)+"'," + "'"+s_name+"'," + "'"+s_phone+"'," + "'"+s_addr+"'," + "'"+s_email+"'" +")")
+    con.commit()
 
 def getSenderAddress():
     pass
@@ -90,8 +111,7 @@ class SampleApp(tk.Tk):
         self._frame = new_frame
         self._frame.pack()
 
-#화면 레이아웃
-        
+#화면 레이아웃       
 class StartPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
@@ -99,7 +119,7 @@ class StartPage(tk.Frame):
         tk.Button(self, text="Member",font=('bold',10), padx=10,#회원일 경우 로그인 페이지로
                   command=lambda: master.switch_frame(Login)).pack(side="top",pady=10)
         tk.Button(self, text="Non-member",font=('bold',10),padx=10, #비회원일 경우 예약 페이지로
-                  command=lambda: master.switch_frame(ReservationSender)).pack(side="top")
+                  command=lambda: master.switch_frame(ReservationReceiver)).pack(side="top")
 
 class Login(tk.Frame):
     #로그인 확인      
@@ -128,7 +148,6 @@ class Login(tk.Frame):
         login_btn = Button(self, text="login", font=("italic", 10), width=20, bg="white", command=lambda:logincheck(e_name, e_phone, e_mail))
         login_btn.grid(row=7, column=1, pady=10,padx=10)
 
-
 class ReservationSender(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
@@ -140,15 +159,15 @@ class ReservationSender(tk.Frame):
         Label(self, text="Email", font=('Helvetica', 14)).grid(row=4, column=0, sticky=W, pady=10,padx=10)
         Label(self, text="Visit date", font=('Helvetica', 14)).grid(row=5, column=0, sticky=W, pady=10,padx=10)
         #input text
-        sender_name = Text(self,height=1,width=40)
+        sender_name =  Entry(self,width=40)
         sender_name.grid(row=1, column=1, pady=10, padx=20)
-        sender_phonenum = Text(self,height=1,width=40)
+        sender_phonenum =  Entry(self,width=40)
         sender_phonenum.grid(row=2, column=1, pady=10, padx=20)
-        sender_addr = Text(self,height=3,width=40)
+        sender_addr = Text(self,height=3,width=35)
         sender_addr.grid(row=3, column=1, pady=10, padx=20)
-        sender_email = Text(self,height=1,width=40)
+        sender_email =  Entry(self,width=40)
         sender_email.grid(row=4, column=1, pady=10, padx=20)
-        sender_visit = Text(self,height=1,width=40)
+        sender_visit =  Entry(self,width=40)
         sender_visit.grid(row=5, column=1, pady=10, padx=20)
         #get sender address btn
         addr_btn = Button(self, width=15, text='address book', font=('Times', 14), bg="white", command=lambda:getSenderAddress()).grid(row=3,column=3,padx=20);
@@ -165,11 +184,11 @@ class ReservationReceiver(tk.Frame):
         Label(self, text="Mobile", font=('Helvetica', 14)).grid(row=2, column=0, sticky=W, pady=10,padx=10)
         Label(self, text="Address", font=('Helvetica', 14)).grid(row=3, column=0, sticky=W, pady=10,padx=10)
                 #input text
-        receiver_name = Text(self,height=1,width=40)
+        receiver_name =  Entry(self,width=40)
         receiver_name.grid(row=1, column=1, pady=10, padx=20)
-        receiver_phonenum = Text(self,height=1,width=40)
+        receiver_phonenum =  Entry(self,width=40)
         receiver_phonenum.grid(row=2, column=1, pady=10, padx=20)
-        receiver_addr = Text(self,height=3,width=40)
+        receiver_addr = Text(self,height=3,width=35)
         receiver_addr.grid(row=3, column=1, pady=10, padx=20)
         #input btn
         #next page btn + receiver Info save
@@ -189,15 +208,15 @@ class ReservationProduct(tk.Frame):
         Label(self, text="Weight", font=('Helvetica', 14)).grid(row=5, column=0, sticky=W, pady=10,padx=10)
 
         #input text
-        product_name = Text(self,height=1,width=40)
+        product_name =  Entry(self,width=40)
         product_name.grid(row=1, column=1, pady=10, padx=20)
-        product_quantity = Text(self,height=1,width=40)
+        product_quantity =  Entry(self,width=40)
         product_quantity.grid(row=2, column=1, pady=10, padx=20)
-        product_cost = Text(self,height=1,width=40)
+        product_cost =  Entry(self,width=40)
         product_cost.grid(row=3, column=1, pady=10, padx=20)
-        product_size = Text(self,height=3,width=40)
+        product_size =  Entry(self,width=40)
         product_size.grid(row=4, column=1, pady=10, padx=20)
-        product_weight = Text(self,height=1,width=40)
+        product_weight =  Entry(self,width=40)
         product_weight.grid(row=5, column=1, pady=10, padx=20)
         #input btn
         #next page btn + product Info save
